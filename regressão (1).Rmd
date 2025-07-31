@@ -1,0 +1,114 @@
+---
+title: "Parte 02:Regressão "
+output: html_document
+date: "2025-06-27"
+html_document:
+    mathjax: default
+    toc: true            # cria sumário automático
+    toc_float: true      # sumário flutuante
+    code_folding: hide   # opção para esconder código
+    theme: cosmo         # tema visual bonito
+    highlight: tango     # estilo de highlight do código
+---
+
+```{r setup, include=FALSE}
+# Configurações globais para os chunks de código
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 8,
+  fig.height = 5,
+  fig.align = 'center'
+)
+
+# Carrega todos os pacotes necessários
+library(readxl)    # para ler arquivos Excel
+library(ggplot2)   # para gráficos
+library(dplyr)     # para manipulação de dados
+library(knitr)     # para tabelas formatadas
+library(boot)
+
+# Define a semente para reprodutibilidade
+set.seed(123)
+```
+
+# Introdução
+
+Nesta parte do projeto, investigamos a relação entre a circunferência do pescoço e a da cintura. Utilizaremos regressão linear simples e técnicas de reamostragem (bootstrap) para avaliar a confiabilidade dos coeficientes estimados.
+
+##Coleta de Dados
+
+
+```{r dados}
+# dados
+pescoco <- c(33,32,40,40,46,35,40,32,32,40,39,32,38,45,40,39,32,38,45,33,32,40,40,46,35,40,32,32,42,49,51,54,34,41)
+cintura <- c(64,78,86,80,103,86,81,65,70,80,96,79,109,124,80,96,79,109,124,64,78,86,80,103,86,81,65,70,92,116,119,137,81,104)
+dados <- data.frame(pescoco, cintura)
+```
+
+
+```{r }
+plot(pescoco, cintura,
+     main = "Dispersão: Cintura vs Pescoço",
+     xlab = "pescoco",
+     ylab = "cintura",
+     col = "blue",
+     pch = 16)
+
+abline(lm(cintura ~ pescoco), col = "red", lwd = 2)
+modelo <- lm(cintura ~ pescoco, data = dados)
+
+# Exibir os coeficientes
+coeficientes <- coef(modelo)
+print(coeficientes)
+```
+\
+
+
+
+```{r regressão linear}
+modelo <- lm(cintura ~ pescoco, data = dados)
+summary(modelo)
+
+```
+```{r reamostragens}
+# Número de reamostragens
+B <- 1000
+
+# Armazenar os coeficientes
+interceptos <- numeric(B)
+inclinações <- numeric(B)
+
+set.seed(123)  # Para reprodutibilidade
+
+for (i in 1:B) {
+  amostra <- dados[sample(1:nrow(dados), replace = TRUE), ]
+  modelo_boot <- lm(cintura ~ pescoco, data = amostra)
+  interceptos[i] <- coef(modelo_boot)[1]
+  inclinações[i] <- coef(modelo_boot)[2]
+}
+```
+
+```{r intervalo de confiança}
+IC_intercepto <- quantile(interceptos, probs = c(0.025, 0.975))
+IC_inclinacao <- quantile(inclinações, probs = c(0.025, 0.975))
+
+IC_intercepto
+IC_inclinacao
+
+```
+
+```{r gráfico}
+ggplot(data.frame(inclinações), aes(x = inclinações)) +
+  geom_histogram(bins = 20, fill = "skyblue", color = "black") +
+  geom_vline(xintercept = IC_inclinacao, col = "red", linetype = "dashed", lwd = 1) +
+  labs(
+    title = expression("Bootstrap de " * beta[1]),
+    x = expression(beta[1]),
+    y = "Frequência"
+  ) +
+  theme_minimal()
+
+```
+
